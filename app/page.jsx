@@ -116,7 +116,7 @@ export default function CapOverlayApp() {
 
   return (
     <div className="p-6 flex flex-col items-center gap-4">
-      <h1 className="text-2xl font-bold">Cap Overlay App</h1>
+      <h1 className="text-2xl font-bold">succinct cap app</h1>
 
       <input
         type="file"
