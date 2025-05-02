@@ -4,9 +4,6 @@ import { useRef, useState, useEffect } from 'react';
 
 export default function CapOverlayApp() {
   const [imageSrc, setImageSrc] = useState(null);
-  const [capPosition, setCapPosition] = useState({ x: 100, y: 50 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [capScale, setCapScale] = useState(1);
   const [capRotation, setCapRotation] = useState(0);
   const [imagesLoaded, setImagesLoaded] = useState({ userImage: false, cap: false });
@@ -14,26 +11,18 @@ export default function CapOverlayApp() {
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
   const capImg = useRef(null);
-
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setImageSrc(reader.result);
-        setImagesLoaded({ userImage: false, cap: false });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  const capPosition = useRef({ x: 100, y: 50 });
+  const isDragging = useRef(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
 
   const drawImageWithCap = () => {
     const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
     const img = imageRef.current;
     const cap = capImg.current;
-    if (!canvas || !img || !cap) return;
 
-    const ctx = canvas.getContext('2d');
+    if (!canvas || !ctx || !img || !cap) return;
+
     canvas.width = img.width;
     canvas.height = img.height;
 
@@ -44,14 +33,19 @@ export default function CapOverlayApp() {
     const capWidth = baseCapWidth * capScale;
     const capHeight = (cap.height / cap.width) * capWidth;
 
-    const centerX = capPosition.x + capWidth / 2;
-    const centerY = capPosition.y + capHeight / 2;
+    const { x, y } = capPosition.current;
+    const centerX = x + capWidth / 2;
+    const centerY = y + capHeight / 2;
 
     ctx.save();
     ctx.translate(centerX, centerY);
     ctx.rotate((capRotation * Math.PI) / 180);
     ctx.drawImage(cap, -capWidth / 2, -capHeight / 2, capWidth, capHeight);
     ctx.restore();
+  };
+
+  const updateCanvas = () => {
+    requestAnimationFrame(drawImageWithCap);
   };
 
   const startDrag = (clientX, clientY) => {
@@ -65,29 +59,44 @@ export default function CapOverlayApp() {
     const capWidth = (imageRef.current.width / 3) * capScale;
     const capHeight = (capImg.current.height / capImg.current.width) * capWidth;
 
-    setDragOffset({
-      x: mouseX - capPosition.x,
-      y: mouseY - capPosition.y,
-    });
+    dragOffset.current = {
+      x: mouseX - capPosition.current.x,
+      y: mouseY - capPosition.current.y,
+    };
 
-    setIsDragging(true);
+    isDragging.current = true;
   };
 
   const duringDrag = (clientX, clientY) => {
-    if (!isDragging || !canvasRef.current) return;
+    if (!isDragging.current) return;
 
-    const rect = canvasRef.current.getBoundingClientRect();
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
     const mouseX = clientX - rect.left;
     const mouseY = clientY - rect.top;
 
-    setCapPosition({
-      x: mouseX - dragOffset.x,
-      y: mouseY - dragOffset.y,
-    });
+    capPosition.current = {
+      x: mouseX - dragOffset.current.x,
+      y: mouseY - dragOffset.current.y,
+    };
+
+    updateCanvas();
   };
 
   const endDrag = () => {
-    setIsDragging(false);
+    isDragging.current = false;
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImageSrc(reader.result);
+        setImagesLoaded({ userImage: false, cap: false });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const downloadImage = () => {
@@ -99,12 +108,11 @@ export default function CapOverlayApp() {
     link.click();
   };
 
-  // Redraw whenever cap updates or loads
   useEffect(() => {
     if (imagesLoaded.userImage && imagesLoaded.cap) {
-      drawImageWithCap();
+      updateCanvas();
     }
-  }, [capPosition, capScale, capRotation, imagesLoaded]);
+  }, [imagesLoaded, capScale, capRotation]);
 
   return (
     <div className="p-6 flex flex-col items-center gap-4">
@@ -119,7 +127,6 @@ export default function CapOverlayApp() {
 
       {imageSrc && (
         <>
-          {/* Hidden image refs */}
           <img
             ref={imageRef}
             src={imageSrc}
@@ -142,14 +149,15 @@ export default function CapOverlayApp() {
           <div className="w-full flex justify-center">
             <canvas
               ref={canvasRef}
-              className="border rounded-md shadow touch-none max-w-[95vw] h-auto"
+              className="border rounded-md shadow touch-none max-w-[95vw]"
               onMouseDown={(e) => startDrag(e.clientX, e.clientY)}
               onMouseMove={(e) => duringDrag(e.clientX, e.clientY)}
               onMouseUp={endDrag}
               onMouseLeave={endDrag}
-              onTouchStart={(e) =>
-                startDrag(e.touches[0].clientX, e.touches[0].clientY)
-              }
+              onTouchStart={(e) => {
+                e.preventDefault();
+                startDrag(e.touches[0].clientX, e.touches[0].clientY);
+              }}
               onTouchMove={(e) => {
                 e.preventDefault();
                 duringDrag(e.touches[0].clientX, e.touches[0].clientY);
@@ -158,7 +166,6 @@ export default function CapOverlayApp() {
             />
           </div>
 
-          {/* Sliders */}
           <div className="flex flex-col gap-4 w-full max-w-xs mt-4">
             <label className="text-sm font-medium">
               Resize Cap ({capScale.toFixed(2)}x)
@@ -169,7 +176,10 @@ export default function CapOverlayApp() {
               max="2"
               step="0.01"
               value={capScale}
-              onChange={(e) => setCapScale(parseFloat(e.target.value))}
+              onChange={(e) => {
+                setCapScale(parseFloat(e.target.value));
+                updateCanvas();
+              }}
             />
 
             <label className="text-sm font-medium">
@@ -181,7 +191,10 @@ export default function CapOverlayApp() {
               max="360"
               step="1"
               value={capRotation}
-              onChange={(e) => setCapRotation(parseInt(e.target.value))}
+              onChange={(e) => {
+                setCapRotation(parseInt(e.target.value));
+                updateCanvas();
+              }}
             />
           </div>
 
