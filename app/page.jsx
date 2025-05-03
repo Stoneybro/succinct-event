@@ -1,12 +1,16 @@
-'use client';
+"use client";
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from "react";
+import Image from "next/image";
 
 export default function CapOverlayApp() {
   const [imageSrc, setImageSrc] = useState(null);
   const [capScale, setCapScale] = useState(1);
   const [capRotation, setCapRotation] = useState(0);
-  const [imagesLoaded, setImagesLoaded] = useState({ userImage: false, cap: false });
+  const [imagesLoaded, setImagesLoaded] = useState({
+    userImage: false,
+    cap: false,
+  });
 
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
@@ -17,17 +21,18 @@ export default function CapOverlayApp() {
 
   const drawImageWithCap = () => {
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     const img = imageRef.current;
     const cap = capImg.current;
 
     if (!canvas || !ctx || !img || !cap) return;
 
+    const scaleFactor = canvas.clientWidth / img.width;
     canvas.width = img.width;
     canvas.height = img.height;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
     const baseCapWidth = img.width / 3;
     const capWidth = baseCapWidth * capScale;
@@ -102,8 +107,8 @@ export default function CapOverlayApp() {
   const downloadImage = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const link = document.createElement('a');
-    link.download = 'capped-image.png';
+    const link = document.createElement("a");
+    link.download = "capped-image.png";
     link.href = canvas.toDataURL();
     link.click();
   };
@@ -115,97 +120,110 @@ export default function CapOverlayApp() {
   }, [imagesLoaded, capScale, capRotation]);
 
   return (
-    <div className="p-6 flex flex-col items-center gap-4">
-      <h1 className="text-2xl font-bold">succinct cap app</h1>
+    <div className="min-h-screen bg-gradient-to-b from-pink-300 to-pink-100 flex flex-col items-center p-4">
+      <header className="w-full max-w-4xl text-center py-4">
+        <h1 className="text-4xl font-bold text-pink-600">CapSnap.io</h1>
+        <p className="text-gray-600 mt-1">Put a succinct cap on it 👒</p>
+      </header>
 
-      <input
-        type="file"
-        accept="image/*"
-        onChange={handleImageUpload}
-        className="border border-gray-300 px-4 py-2 rounded"
-      />
+      <div className="w-full max-w-2xl bg-white shadow-lg rounded-lg p-4 flex flex-col items-center">
+        {!imageSrc && (
+          <>
+            <Image src={"/succinctCapBig.jpg"} alt="Example" width={300} height={300} />
+            <p className="text-gray-500 mt-4 text-sm text-center">
+              Upload a picture to get started!
+            </p>
+          </>
+        )}
 
-      {imageSrc && (
-        <>
-          <img
-            ref={imageRef}
-            src={imageSrc}
-            alt="Uploaded"
-            className="hidden"
-            onLoad={() =>
-              setImagesLoaded((prev) => ({ ...prev, userImage: true }))
-            }
-          />
-          <img
-            ref={capImg}
-            src="/cap.png"
-            alt="Cap"
-            className="hidden"
-            onLoad={() =>
-              setImagesLoaded((prev) => ({ ...prev, cap: true }))
-            }
-          />
+{!imageSrc && (<><label className="bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-full mt-6 cursor-pointer transition text-lg">
+          Upload Image
+          <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+        </label></>)}
 
-          <div className="w-full flex justify-center">
-            <canvas
-              ref={canvasRef}
-              className="border rounded-md shadow touch-none max-w-[95vw]"
-              onMouseDown={(e) => startDrag(e.clientX, e.clientY)}
-              onMouseMove={(e) => duringDrag(e.clientX, e.clientY)}
-              onMouseUp={endDrag}
-              onMouseLeave={endDrag}
-              onTouchStart={(e) => {
-                e.preventDefault();
-                startDrag(e.touches[0].clientX, e.touches[0].clientY);
-              }}
-              onTouchMove={(e) => {
-                e.preventDefault();
-                duringDrag(e.touches[0].clientX, e.touches[0].clientY);
-              }}
-              onTouchEnd={endDrag}
+        {imageSrc && (
+          <>
+            <img
+              ref={imageRef}
+              src={imageSrc}
+              alt="Uploaded"
+              className="hidden"
+              onLoad={() => setImagesLoaded((prev) => ({ ...prev, userImage: true }))}
             />
-          </div>
-
-          <div className="flex flex-col gap-4 w-full max-w-xs mt-4">
-            <label className="text-sm font-medium">
-              Resize Cap ({capScale.toFixed(2)}x)
-            </label>
-            <input
-              type="range"
-              min="0.1"
-              max="2"
-              step="0.01"
-              value={capScale}
-              onChange={(e) => {
-                setCapScale(parseFloat(e.target.value));
-                updateCanvas();
-              }}
+            <img
+              ref={capImg}
+              src="/cap.png"
+              alt="Cap"
+              className="hidden"
+              onLoad={() => setImagesLoaded((prev) => ({ ...prev, cap: true }))}
             />
 
-            <label className="text-sm font-medium">
-              Rotate Cap ({capRotation}°)
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="360"
-              step="1"
-              value={capRotation}
-              onChange={(e) => {
-                setCapRotation(parseInt(e.target.value));
-                updateCanvas();
-              }}
-            />
-          </div>
+            <div className="w-full overflow-auto mt-6 border rounded-xl">
+              <canvas
+                ref={canvasRef}
+                className="w-full max-w-full h-auto rounded-md touch-none"
+                onMouseDown={(e) => startDrag(e.clientX, e.clientY)}
+                onMouseMove={(e) => duringDrag(e.clientX, e.clientY)}
+                onMouseUp={endDrag}
+                onMouseLeave={endDrag}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  startDrag(e.touches[0].clientX, e.touches[0].clientY);
+                }}
+                onTouchMove={(e) => {
+                  e.preventDefault();
+                  duringDrag(e.touches[0].clientX, e.touches[0].clientY);
+                }}
+                onTouchEnd={endDrag}
+              />
+            </div>
 
-          <button
-            onClick={downloadImage}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Download Image
-          </button>
-        </>
-      )}
+            <div className="mt-6 w-full space-y-4">
+              <div>
+                <label className="block text-sm mb-1 text-black">Resize Cap</label>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="2"
+                  step="0.01"
+                  value={capScale}
+                  
+                  onChange={(e) => {
+                    setCapScale(parseFloat(e.target.value));
+                    updateCanvas();
+                  }}
+                  className="w-full"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm  mb-1 text-black">Rotate Cap</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="360"
+                  step="1"
+                  value={capRotation}
+                  onChange={(e) => {
+                    setCapRotation(parseInt(e.target.value));
+                    updateCanvas();
+                  }}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="text-center mt-4">
+                <button
+                  onClick={downloadImage}
+                  className="bg-pink-400  text-white px-6 py-2 rounded-full shadow"
+                >
+                  Download Image
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
