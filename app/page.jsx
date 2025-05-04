@@ -120,10 +120,10 @@ export default function CapOverlayApp() {
   }, [imagesLoaded, capScale, capRotation]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-300 to-pink-100 flex flex-col items-center p-4">
-      <header className="w-full max-w-4xl text-center py-4">
-        <h1 className="text-4xl font-bold text-pink-600">CapSnap.io</h1>
-        <p className="text-gray-600 mt-1">Put a succinct cap on it 👒</p>
+    <div className="min-h-screen bg-page-bg bg-cover bg-center  flex flex-col items-center p-4">
+      <header className="w-full max-w-4xl text-center py-4 flex flex-col items-center">
+      <Image src={"/succinctHero.png"} alt="Example" width={300} height={300} />
+        <p className="text-gray-600 font-light  mt-1">Put a cap on it 👒</p>
       </header>
 
       <div className="w-full max-w-2xl bg-white shadow-lg rounded-lg p-4 flex flex-col items-center">
